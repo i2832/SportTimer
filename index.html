@@ -314,18 +314,7 @@
             background: var(--danger-color);
         }
 
-        .delete-participant-btn {
-            background: var(--warning-color);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 8px 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .start-btn:hover, .stop-btn:hover, .delete-participant-btn:hover {
+        .start-btn:hover, .stop-btn:hover {
             opacity: 0.9;
             transform: scale(1.05);
         }
@@ -339,6 +328,22 @@
         .start-btn.disabled:hover {
             transform: none;
             opacity: 0.6;
+        }
+
+        .delete-text {
+            color: var(--warning-color);
+            font-weight: 600;
+            cursor: pointer;
+            padding: 8px 16px;
+            margin-top: 20px;
+            text-align: center;
+            transition: all 0.2s;
+            border-radius: 8px;
+        }
+
+        .delete-text:hover {
+            background: rgba(245, 158, 11, 0.1);
+            transform: scale(1.05);
         }
 
         .participant-timer {
@@ -458,6 +463,10 @@
             
             .action-buttons {
                 flex-direction: column;
+            }
+            
+            .delete-text {
+                margin-top: 20px;
             }
         }
     </style>
@@ -944,16 +953,18 @@
                 }
             });
             
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'delete-participant-btn';
-            deleteBtn.textContent = 'Удалить';
-            deleteBtn.addEventListener('click', () => {
+            actionButtons.appendChild(actionBtn);
+            card.appendChild(actionButtons);
+            
+            // Delete text (not button) with margin
+            const deleteText = document.createElement('div');
+            deleteText.className = 'delete-text';
+            deleteText.textContent = 'Удалить';
+            deleteText.addEventListener('click', () => {
                 showDeleteConfirmationDialog(participant.id);
             });
             
-            actionButtons.appendChild(actionBtn);
-            actionButtons.appendChild(deleteBtn);
-            card.appendChild(actionButtons);
+            card.appendChild(deleteText);
             
             // Timer display (hidden initially)
             if (participant.startTime || participant.endTime) {
@@ -1074,285 +1085,4 @@
             if (timerDisplay) {
                 const endTimeDisplay = timerDisplay.querySelector('div:last-child');
                 endTimeDisplay.textContent = new Date(participant.endTime).toLocaleTimeString();
-            }
-            
-            saveData();
-        }
-
-        // Delete participant functionality
-        const deleteConfirmationDialog = document.getElementById('deleteConfirmationDialog');
-        const deleteConfirmBtn = document.getElementById('deleteConfirmBtn');
-        const deleteCancelBtn = document.getElementById('deleteCancelBtn');
-
-        function showDeleteConfirmationDialog(participantId) {
-            participantToDelete = participantId;
-            deleteConfirmationDialog.classList.add('show');
-        }
-
-        deleteConfirmBtn.addEventListener('click', () => {
-            if (participantToDelete !== null) {
-                deleteParticipant(participantToDelete);
-                participantToDelete = null;
-            }
-            deleteConfirmationDialog.classList.remove('show');
-        });
-
-        deleteCancelBtn.addEventListener('click', () => {
-            participantToDelete = null;
-            deleteConfirmationDialog.classList.remove('show');
-        });
-
-        function deleteParticipant(participantId) {
-            // Stop timer if running
-            const participant = participants.find(p => p.id === participantId);
-            if (participant && participant.isRunning) {
-                clearInterval(participant.timerInterval);
-            }
-            
-            // Remove participant
-            participants = participants.filter(p => p.id !== participantId);
-            
-            // Renumber participants
-            participants.forEach((p, index) => {
-                p.number = index + 1;
-            });
-            
-            renderParticipants();
-            saveData();
-            showSuccessMessage('Участник удален');
-        }
-
-        // Clear history functionality
-        const clearHistoryBtn = document.getElementById('clearHistoryBtn');
-        const clearHistoryDialog = document.getElementById('clearHistoryDialog');
-        const clearConfirmBtn = document.getElementById('clearConfirmBtn');
-        const clearCancelBtn = document.getElementById('clearCancelBtn');
-
-        clearHistoryBtn.addEventListener('click', () => {
-            clearHistoryDialog.classList.add('show');
-            dropdownMenu.classList.remove('show');
-        });
-
-        clearConfirmBtn.addEventListener('click', () => {
-            clearAllData();
-            clearHistoryDialog.classList.remove('show');
-        });
-
-        clearCancelBtn.addEventListener('click', () => {
-            clearHistoryDialog.classList.remove('show');
-        });
-
-        function clearAllData() {
-            // Stop competition timer if running
-            if (isCompetitionRunning) {
-                clearInterval(competitionTimerInterval);
-                isCompetitionRunning = false;
-                competitionBtn.innerHTML = '<span class="btn-icon">▶</span><span>Начать соревнование</span>';
-                competitionTimeDisplay.classList.add('hidden');
-            }
-            
-            // Clear all participants
-            participants = [];
-            nextParticipantId = 1;
-            
-            // Clear localStorage
-            localStorage.removeItem('stopwatchData');
-            
-            // Re-render
-            renderParticipants();
-            
-            showSuccessMessage('Вся история очищена');
-        }
-
-        // CSV Export/Import functionality
-        const exportBtn = document.getElementById('exportBtn');
-        const importBtn = document.getElementById('importBtn');
-        const fileInput = document.getElementById('fileInput');
-        const successMessage = document.getElementById('successMessage');
-        const errorMessage = document.getElementById('errorMessage');
-
-        exportBtn.addEventListener('click', () => {
-            exportToCSV();
-            dropdownMenu.classList.remove('show');
-        });
-
-        function exportToCSV() {
-            // Create CSV content
-            let csvContent = "Время начала соревнования,Время завершения соревнования,Время проведения соревнования\n";
-            const startTime = competitionStartTime ? new Date(competitionStartTime).toLocaleString() : "";
-            const endTime = competitionStartTime ? new Date(competitionStartTime + competitionElapsedTime).toLocaleString() : "";
-            const duration = formatTime(competitionElapsedTime);
-            csvContent += `${startTime},${endTime},${duration}\n\n`;
-            
-            // Participants header
-            csvContent += "Номер участника,Время старта,Время завершения,Затраченное время,Комментарий\n";
-            
-            // Participants data
-            participants.forEach(participant => {
-                const start = participant.startTime ? new Date(participant.startTime).toLocaleString() : "";
-                const end = participant.endTime ? new Date(participant.endTime).toLocaleString() : "";
-                const elapsed = formatTime(participant.elapsedTime);
-                // Escape quotes in comment
-                const comment = participant.comment.replace(/"/g, '""');
-                csvContent += `${participant.number},"${start}","${end}",${elapsed},"${comment}"\n`;
-            });
-            
-            // Create Blob and download
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.setAttribute("href", url);
-            link.setAttribute("download", `competition_results_${new Date().toISOString().slice(0, 10)}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-            
-            showSuccessMessage('Таблица успешно экспортирована!');
-        }
-
-        importBtn.addEventListener('click', () => {
-            fileInput.click();
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const csvData = event.target.result;
-                parseCSV(csvData);
-                dropdownMenu.classList.remove('show');
-            };
-            reader.readAsText(file);
-            
-            // Reset file input
-            fileInput.value = '';
-        });
-
-        function parseCSV(csvData) {
-            const lines = csvData.split('\n');
-            let participantsData = [];
-            let inParticipantsSection = false;
-            
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
-                
-                // Skip competition info lines
-                if (line.includes('Время начала соревнования')) {
-                    continue;
-                }
-                
-                // Check for participants header
-                if (line.includes('Номер участника')) {
-                    inParticipantsSection = true;
-                    continue;
-                }
-                
-                if (inParticipantsSection && line) {
-                    const values = parseCSVLine(line);
-                    if (values.length >= 5) {
-                        participantsData.push({
-                            number: parseInt(values[0]) || participants.length + 1,
-                            startTime: values[1] && values[1] !== '""' && values[1] !== '"' ? new Date(values[1]).getTime() : null,
-                            endTime: values[2] && values[2] !== '""' && values[2] !== '"' ? new Date(values[2]).getTime() : null,
-                            elapsedTime: parseTimeToMilliseconds(values[3]),
-                            comment: values[4].replace(/"/g, '')
-                        });
-                    }
-                }
-            }
-            
-            // Add imported participants
-            participantsData.forEach(data => {
-                const participant = {
-                    id: nextParticipantId++,
-                    number: data.number,
-                    comment: data.comment,
-                    startTime: data.startTime,
-                    endTime: data.endTime,
-                    elapsedTime: data.elapsedTime,
-                    isRunning: false,
-                    timerInterval: null
-                };
-                
-                if (data.startTime && !data.endTime) {
-                    participant.isRunning = true;
-                }
-                
-                participants.push(participant);
-            });
-            
-            renderParticipants();
-            saveData();
-            showSuccessMessage('Данные успешно импортированы!');
-        }
-
-        function parseCSVLine(line) {
-            const result = [];
-            let current = '';
-            let inQuotes = false;
-            
-            for (let i = 0; i < line.length; i++) {
-                const char = line[i];
-                const nextChar = line[i + 1];
-                
-                if (char === '"' && !inQuotes) {
-                    inQuotes = true;
-                } else if (char === '"' && inQuotes && nextChar === '"') {
-                    current += '"';
-                    i++; // Skip the next quote
-                } else if (char === '"' && inQuotes) {
-                    inQuotes = false;
-                } else if (char === ',' && !inQuotes) {
-                    result.push(current);
-                    current = '';
-                } else {
-                    current += char;
-                }
-            }
-            
-            result.push(current);
-            return result;
-        }
-
-        function parseTimeToMilliseconds(timeStr) {
-            if (!timeStr) return 0;
-            
-            const parts = timeStr.split(':');
-            if (parts.length !== 3) return 0;
-            
-            const hours = parseInt(parts[0]) || 0;
-            const minutes = parseInt(parts[1]) || 0;
-            const secondsParts = parts[2].split('.');
-            const seconds = parseInt(secondsParts[0]) || 0;
-            const centiseconds = parseInt(secondsParts[1]) || 0;
-            
-            return (hours * 3600 + minutes * 60 + seconds) * 1000 + centiseconds * 10;
-        }
-
-        function showSuccessMessage(message) {
-            successMessage.textContent = message;
-            successMessage.style.display = 'block';
-            
-            setTimeout(() => {
-                successMessage.style.display = 'none';
-            }, 3000);
-        }
-
-        function showErrorMessage(message) {
-            errorMessage.textContent = message;
-            errorMessage.style.display = 'block';
-            
-            setTimeout(() => {
-                errorMessage.style.display = 'none';
-            }, 3000);
-        }
-
-        // Initialize the app
-        document.addEventListener('DOMContentLoaded', loadData);
-    </script>
-</body>
-</html>
+          
