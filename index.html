@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Секундомер для соревнований</title>
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --secondary-color: #7c3aed;
+            --background-color: #1a1a1a;
+            --card-color: #2d2d2d;
+            --text-color: #ffffff;
+            --text-secondary: #b3b3b3;
+            --accent-color: #10b981;
+            --danger-color: #ef4444;
+            --success-color: #10b981;
+        }
+
+        [data-theme="light"] {
+            --primary-color: #4f46e5;
+            --secondary-color: #7c3aed;
+            --background-color: #f5f5f5;
+            --card-color: #ffffff;
+            --text-color: #1a1a1a;
+            --text-secondary: #6b7280;
+            --accent-color: #10b981;
+            --danger-color: #ef4444;
+            --success-color: #10b981;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: var(--background-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding: 0;
+            transition: background-color 0.3s ease;
+        }
+
+        .container {
+            max-width: 100%;
+            padding: 16px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--background-color);
+        }
+
+        .logo {
+            width: 140px;
+            height: auto;
+        }
+
+        .menu-btn {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            font-size: 24px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: background-color 0.2s;
+        }
+
+        .menu-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            right: 16px;
+            top: 60px;
+            background: var(--card-color);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            padding: 12px 0;
+            min-width: 200px;
+            z-index: 1000;
+            display: none;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .dropdown-menu.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 32px 0;
+            gap: 24px;
+        }
+
+        .competition-btn {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            border-radius: 16px;
+            padding: 16px 32px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 16px rgba(79, 70, 229, 0.3);
+            transition: all 0.3s ease;
+            min-width: 280px;
+        }
+
+        .competition-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+        }
+
+        .competition-btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-icon {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .confirmation-dialog {
+            background: var(--card-color);
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 320px;
+            margin: 24px auto;
+            display: none;
+        }
+
+        .confirmation-dialog.show {
+            display: block;
+        }
+
+        .confirmation-title {
+            font-size: 18px;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+
+        .confirmation-options {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+        }
+
+        .confirm-btn, .cancel-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .confirm-btn {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .cancel-btn {
+            background: var(--text-secondary);
+            color: var(--text-color);
+        }
+
+        .confirm-btn:hover, .cancel-btn:hover {
+            opacity: 0.9;
+            transform: scale(1.05);
+        }
+
+        .participants-section {
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .add-participant-btn {
+            background: linear-gradient(135deg, var(--accent-color), #059669);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+            margin: 16px auto;
+            transition: all 0.3s ease;
+        }
+
+        .add-participant-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .participant-card {
+            background: var(--card-color);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .participant-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+
+        .participant-number {
+            background: var(--primary-color);
+            color: white;
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .participant-comment {
+            flex: 1;
+            font-size: 16px;
+            padding: 8px 12px;
+            border: none;
+            background: transparent;
+            color: var(--text-color);
+            border-bottom: 2px solid transparent;
+            transition: border-color 0.2s;
+        }
+
+        .participant-comment:focus {
+            outline: none;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .start-btn, .stop-btn {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .stop-btn {
+            background: var(--danger-color);
+        }
+
+        .start-btn:hover, .stop-btn:hover {
+            opacity: 0.9;
+            transform: scale(1.05);
+        }
+
+        .start-btn.disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .start-btn.disabled:hover {
+            transform: none;
+            opacity: 0.6;
+        }
+
+        .participant-timer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .timer-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+
+        .group-container {
+            margin-bottom: 16px;
+        }
+
+        .group-toggle {
+            background: var(--card-color);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .group-toggle:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .group-content {
+            margin-top: 8px;
+            display: none;
+        }
+
+        .group-content.show {
+            display: block;
+        }
+
+        .competition-time {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 16px 0;
+            color: var(--accent-color);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .success-message {
+            background: var(--success-color);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .participant-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            
+            .participant-number {
+                width: 40px;
+                height: 40px;
+                font-size: 18px;
+            }
+            
+            .competition-btn {
+                min-width: 240px;
+                padding: 14px 24px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <img src="logo.png" alt="Логотип" class="logo">
+            <button class="menu-btn" id="menuBtn">☰</button>
+            <div class="dropdown-menu" id="dropdownMenu">
+                <div class="dropdown-item theme-toggle" id="themeToggle">
+                    <span>Темная тема</span>
+                    <div id="themeSwitch" style="width: 40px; height: 20px; background: #ccc; border-radius: 10px; position: relative;">
+                        <div id="themeSwitchHandle" style="width: 18px; height: 18px; background: white; border-radius: 50%; position: absolute; top: 1px; right: 1px;"></div>
+                    </div>
+                </div>
+                <div class="dropdown-item" id="exportBtn">
+                    📤 Экспорт таблицы
+                </div>
+                <div class="dropdown-item" id="importBtn">
+                    📥 Импорт таблицы
+                    <input type="file" id="fileInput" class="file-input" accept=".csv">
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <button class="competition-btn" id="competitionBtn">
+                <span class="btn-icon">▶</span>
+                <span>Начать соревнование</span>
+            </button>
+
+            <div class="confirmation-dialog" id="confirmationDialog">
+                <div class="confirmation-title">Действительно завершить соревнование?</div>
+                <div class="confirmation-options">
+                    <button class="confirm-btn" id="confirmBtn">Да</button>
+                    <button class="cancel-btn" id="cancelBtn">Нет</button>
+                </div>
+            </div>
+
+            <div class="competition-time hidden" id="competitionTime">00:00:00.00</div>
+
+            <section class="participants-section">
+                <button class="add-participant-btn" id="addParticipantBtn">+</button>
+                <div id="participantsContainer"></div>
+                <div id="groupsContainer"></div>
+            </section>
+        </main>
+    </div>
+
+    <div class="success-message" id="successMessage"></div>
+
+    <script>
+        // Load data from localStorage on page load
+        function loadData() {
+            const savedData = localStorage.getItem('stopwatchData');
+            if (savedData) {
+                try {
+                    const data = JSON.parse(savedData);
+                    participants = data.participants || [];
+                    nextParticipantId = data.nextParticipantId || 1;
+                    isCompetitionRunning = data.isCompetitionRunning || false;
+                    competitionStartTime = data.competitionStartTime || null;
+                    competitionElapsedTime = data.competitionElapsedTime || 0;
+                    
+                    if (isCompetitionRunning && competitionStartTime) {
+                        competitionTimerInterval = setInterval(() => {
+                            competitionElapsedTime = Date.now() - competitionStartTime;
+                            updateCompetitionTimeDisplay();
+                        }, 10);
+                        competitionTimeDisplay.classList.remove('hidden');
+                        competitionBtn.innerHTML = '<span class="btn-icon">■</span><span>Завершить соревнование</span>';
+                    }
+                    
+                    renderParticipants();
+                } catch (e) {
+                    console.error('Error loading data:', e);
+                    // Initialize with default data if there's an error
+                    participants = [];
+                    nextParticipantId = 1;
+                    isCompetitionRunning = false;
+                    competitionStartTime = null;
+                    competitionElapsedTime = 0;
+                    addParticipant();
+                }
+            } else {
+                // Initialize with default data
+                participants = [];
+                nextParticipantId = 1;
+                isCompetitionRunning = false;
+                competitionStartTime = null;
+                competitionElapsedTime = 0;
+                addParticipant();
+            }
+            
+            // Load theme
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            if (savedTheme === 'light') {
+                document.body.setAttribute('data-theme', 'light');
+                document.getElementById('themeSwitchHandle').style.right = '1px';
+                document.getElementById('themeSwitchHandle').style.left = 'auto';
+                document.querySelector('.theme-toggle span').textContent = 'Светлая тема';
+            } else {
+                document.getElementById('themeSwitchHandle').style.left = '1px';
+                document.getElementById('themeSwitchHandle').style.right = 'auto';
+                document.querySelector('.theme-toggle span').textContent = 'Темная тема';
+            }
+        }
+
+        // Save data to localStorage
+        function saveData() {
+            const data = {
+                participants: participants.map(p => ({
+                    ...p,
+                    timerInterval: null // Don't save interval references
+                })),
+                nextParticipantId,
+                isCompetitionRunning,
+                competitionStartTime,
+                competitionElapsedTime
+            };
+            localStorage.setItem('stopwatchData', JSON.stringify(data));
+        }
+
+        // Theme toggle functionality
+        const themeToggle = document.getElementById('themeToggle');
+        const themeSwitch = document.getElementById('themeSwitch');
+        const themeSwitchHandle = document.getElementById('themeSwitchHandle');
+        const body = document.body;
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = body.getAttribute('data-theme') || 'dark';
+            if (currentTheme === 'dark') {
+                body.setAttribute('data-theme', 'light');
+                themeSwitchHandle.style.right = '1px';
+                themeSwitchHandle.style.left = 'auto';
+                document.querySelector('.theme-toggle span').textContent = 'Светлая тема';
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.removeAttribute('data-theme');
+                themeSwitchHandle.style.left = '1px';
+                themeSwitchHandle.style.right = 'auto';
+                document.querySelector('.theme-toggle span').textContent = 'Темная тема';
+                localStorage.setItem('theme', 'dark');
+            }
+        });
+
+        // Menu toggle functionality
+        const menuBtn = document.getElementById('menuBtn');
+        const dropdownMenu = document.getElementById('dropdownMenu');
+
+        menuBtn.addEventListener('click', () => {
+            dropdownMenu.classList.toggle('show');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!menuBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                dropdownMenu.classList.remove('show');
+            }
+        });
+
+        // Competition timer functionality
+        let competitionStartTime = null;
+        let competitionTimerInterval = null;
+        let isCompetitionRunning = false;
+        let competitionElapsedTime = 0;
+        let competitionPausedTime = 0;
+
+        const competitionBtn = document.getElementById('competitionBtn');
+        const confirmationDialog = document.getElementById('confirmationDialog');
+        const confirmBtn = document.getElementById('confirmBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const competitionTimeDisplay = document.getElementById('competitionTime');
+
+        competitionBtn.addEventListener('click', () => {
+            if (!isCompetitionRunning) {
+                startCompetition();
+            } else {
+                showConfirmationDialog();
+            }
+        });
+
+        function startCompetition() {
+            isCompetitionRunning = true;
+            competitionStartTime = Date.now() - competitionElapsedTime;
+            competitionBtn.innerHTML = '<span class="btn-icon">■</span><span>Завершить соревнование</span>';
+            
+            competitionTimerInterval = setInterval(() => {
+                competitionElapsedTime = Date.now() - competitionStartTime;
+                updateCompetitionTimeDisplay();
+            }, 10);
+            
+            competitionTimeDisplay.classList.remove('hidden');
+            
+            // Enable all start buttons
+            document.querySelectorAll('.start-btn.disabled').forEach(btn => {
+                btn.classList.remove('disabled');
+                btn.disabled = false;
+            });
+            
+            saveData();
+        }
+
+        function showConfirmationDialog() {
+            // Pause the timer while dialog is shown
+            clearInterval(competitionTimerInterval);
+            competitionPausedTime = Date.now();
+            confirmationDialog.classList.add('show');
+        }
+
+        function hideConfirmationDialog() {
+            confirmationDialog.classList.remove('show');
+            
+            // Resume timer if user cancels
+            if (isCompetitionRunning) {
+                const pauseDuration = Date.now() - competitionPausedTime;
+                competitionStartTime += pauseDuration;
+                competitionTimerInterval = setInterval(() => {
+                    competitionElapsedTime = Date.now() - competitionStartTime;
+                    updateCompetitionTimeDisplay();
+                }, 10);
+            }
+        }
+
+        confirmBtn.addEventListener('click', () => {
+            endCompetition();
+            hideConfirmationDialog();
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            hideConfirmationDialog();
+        });
+
+        function endCompetition() {
+            isCompetitionRunning = false;
+            clearInterval(competitionTimerInterval);
+            competitionBtn.innerHTML = '<span class="btn-icon">▶</span><span>Начать соревнование</span>';
+            
+            // Mark all running participants as finished
+            participants.forEach(participant => {
+                if (participant.isRunning) {
+                    stopParticipantTimer(participant.id, true);
+                }
+            });
+            
+            // Disable all start buttons
+            document.querySelectorAll('.start-btn').forEach(btn => {
+                btn.classList.add('disabled');
+                btn.disabled = true;
+            });
+            
+            saveData();
+            
+            // Show success message
+            showSuccessMessage('Соревнование завершено. Результаты сохранены.');
+        }
+
+        function updateCompetitionTimeDisplay() {
+            competitionTimeDisplay.textContent = formatTime(competitionElapsedTime);
+        }
+
+        function formatTime(milliseconds) {
+            const totalSeconds = Math.floor(milliseconds / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            const centiseconds = Math.floor((milliseconds % 1000) / 10);
+            
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
+        }
+
+        // Participant functionality
+        let participants = [];
+        let nextParticipantId = 1;
+
+        const addParticipantBtn = document.getElementById('addParticipantBtn');
+        const participantsContainer = document.getElementById('participantsContainer');
+        const groupsContainer = document.getElementById('groupsContainer');
+
+        addParticipantBtn.addEventListener('click', () => {
+            addParticipant();
+            saveData();
+        });
+
+        function addParticipant() {
+            const participant = {
+                id: nextParticipantId++,
+                number: participants.length + 1,
+                comment: '',
+                startTime: null,
+                endTime: null,
+                elapsedTime: 0,
+                isRunning: false,
+                timerInterval: null
+            };
+            
+            participants.push(participant);
+            renderParticipants();
+        }
+
+        function renderParticipants() {
+            // Clear containers
+            participantsContainer.innerHTML = '';
+            groupsContainer.innerHTML = '';
+            
+            if (participants.length <= 10) {
+                // Render all participants directly
+                participants.forEach(participant => {
+                    participantsContainer.appendChild(createParticipantCard(participant));
+                });
+            } else if (participants.length <= 100) {
+                // Group by tens
+                const groups = Math.ceil(participants.length / 10);
+                
+                for (let i = 0; i < groups; i++) {
+                    const start = i * 10 + 1;
+                    const end = Math.min((i + 1) * 10, participants.length);
+                    
+                    const groupDiv = document.createElement('div');
+                    groupDiv.className = 'group-container';
+                    
+                    const toggleBtn = document.createElement('div');
+                    toggleBtn.className = 'group-toggle';
+                    toggleBtn.innerHTML = `<span>${start}-${end}</span><span>▼</span>`;
+                    toggleBtn.addEventListener('click', () => {
+                        const content = toggleBtn.nextElementSibling;
+                        content.classList.toggle('show');
+                        toggleBtn.querySelector('span:last-child').textContent = 
+                            content.classList.contains('show') ? '▲' : '▼';
+                    });
+                    
+                    const contentDiv = document.createElement('div');
+                    contentDiv.className = 'group-content';
+                    
+                    for (let j = start - 1; j < end; j++) {
+                        contentDiv.appendChild(createParticipantCard(participants[j]));
+                    }
+                    
+                    groupDiv.appendChild(toggleBtn);
+                    groupDiv.appendChild(contentDiv);
+                    groupsContainer.appendChild(groupDiv);
+                }
+            } else {
+                // Group by hundreds
+                const hundredGroups = Math.ceil(participants.length / 100);
+                
+                for (let i = 0; i < hundredGroups; i++) {
+                    const startHundred = i * 100 + 1;
+                    const endHundred = Math.min((i + 1) * 100, participants.length);
+                    
+                    const hundredGroupDiv = document.createElement('div');
+                    hundredGroupDiv.className = 'group-container';
+                    
+                    const hundredToggleBtn = document.createElement('div');
+                    hundredToggleBtn.className = 'group-toggle';
+                    hundredToggleBtn.innerHTML = `<span>${startHundred}-${endHundred}</span><span>▼</span>`;
+                    hundredToggleBtn.addEventListener('click', () => {
+                        const content = hundredToggleBtn.nextElementSibling;
+                        content.classList.toggle('show');
+                        hundredToggleBtn.querySelector('span:last-child').textContent = 
+                            content.classList.contains('show') ? '▲' : '▼';
+                    });
+                    
+                    const hundredContentDiv = document.createElement('div');
+                    hundredContentDiv.className = 'group-content';
+                    
+                    // Create tens groups within hundreds
+                    const tensInHundred = Math.ceil((endHundred - startHundred + 1) / 10);
+                    
+                    for (let j = 0; j < tensInHundred; j++) {
+                        const startTen = startHundred + j * 10;
+                        const endTen = Math.min(startHundred + (j + 1) * 10 - 1, endHundred);
+                        
+                        const tenGroupDiv = document.createElement('div');
+                        tenGroupDiv.className = 'group-container';
+                        
+                        const tenToggleBtn = document.createElement('div');
+                        tenToggleBtn.className = 'group-toggle';
+                        tenToggleBtn.innerHTML = `<span>${startTen}-${endTen}</span><span>▶</span>`;
+                        tenToggleBtn.addEventListener('click', () => {
+                            const content = tenToggleBtn.nextElementSibling;
+                            content.classList.toggle('show');
+                            tenToggleBtn.querySelector('span:last-child').textContent = 
+                                content.classList.contains('show') ? '▼' : '▶';
+                        });
+                        
+                        const tenContentDiv = document.createElement('div');
+                        tenContentDiv.className = 'group-content';
+                        
+                        for (let k = startTen - 1; k < Math.min(endTen, participants.length); k++) {
+                            tenContentDiv.appendChild(createParticipantCard(participants[k]));
+                        }
+                        
+                        tenGroupDiv.appendChild(tenToggleBtn);
+                        tenGroupDiv.appendChild(tenContentDiv);
+                        hundredContentDiv.appendChild(tenGroupDiv);
+                    }
+                    
+                    hundredGroupDiv.appendChild(hundredToggleBtn);
+                    hundredGroupDiv.appendChild(hundredContentDiv);
+                    groupsContainer.appendChild(hundredGroupDiv);
+                }
+            }
+        }
+
+        function createParticipantCard(participant) {
+            const card = document.createElement('div');
+            card.className = 'participant-card';
+            card.dataset.id = participant.id;
+            
+            const header = document.createElement('div');
+            header.className = 'participant-header';
+            
+            const numberInput = document.createElement('div');
+            numberInput.className = 'participant-number';
+            numberInput.textContent = participant.number;
+            numberInput.contentEditable = true;
+            numberInput.addEventListener('blur', (e) => {
+                const newValue = parseInt(e.target.textContent) || 1;
+                participant.number = newValue;
+                e.target.textContent = newValue;
+                saveData();
+            });
+            
+            const commentInput = document.createElement('input');
+            commentInput.type = 'text';
+            commentInput.className = 'participant-comment';
+            commentInput.placeholder = 'Комментарий';
+            commentInput.value = participant.comment;
+            commentInput.addEventListener('input', (e) => {
+                participant.comment = e.target.value;
+                saveData();
+            });
+            
+            const actionBtn = document.createElement('button');
+            actionBtn.className = participant.isRunning ? 'stop-btn' : 'start-btn';
+            
+            // Disable start button if competition hasn't started
+            if (!participant.isRunning && !isCompetitionRunning) {
+                actionBtn.classList.add('disabled');
+                actionBtn.disabled = true;
+            }
+            
+            actionBtn.textContent = participant.isRunning ? 'Стоп' : 'Пуск';
+            actionBtn.addEventListener('click', () => {
+                if (!participant.isRunning) {
+                    startParticipantTimer(participant.id);
+                } else {
+                    stopParticipantTimer(participant.id);
+                }
+            });
+            
+            header.appendChild(numberInput);
+            header.appendChild(commentInput);
+            header.appendChild(actionBtn);
+            
+            card.appendChild(header);
+            
+            // Timer display (hidden initially)
+            if (participant.startTime || participant.endTime) {
+                const timerDisplay = document.createElement('div');
+                timerDisplay.className = 'participant-timer';
+                
+                const startTimeDisplay = document.createElement('div');
+                startTimeDisplay.textContent = participant.startTime ? 
+                    new Date(participant.startTime).toLocaleTimeString() : '';
+                
+                const timerValue = document.createElement('div');
+                timerValue.className = 'timer-value';
+                timerValue.textContent = formatTime(participant.elapsedTime);
+                
+                const endTimeDisplay = document.createElement('div');
+                endTimeDisplay.textContent = participant.endTime ? 
+                    new Date(participant.endTime).toLocaleTimeString() : '';
+                
+                timerDisplay.appendChild(startTimeDisplay);
+                timerDisplay.appendChild(timerValue);
+                timerDisplay.appendChild(endTimeDisplay);
+                
+                card.appendChild(timerDisplay);
+                
+                // Update timer if still running
+                if (participant.isRunning) {
+                    participant.timerInterval = setInterval(() => {
+                        participant.elapsedTime = Date.now() - participant.startTime;
+                        timerValue.textContent = formatTime(participant.elapsedTime);
+                        saveData();
+                    }, 10);
+                }
+            }
+            
+            return card;
+        }
+
+        function startParticipantTimer(participantId) {
+            // Check if competition is running
+            if (!isCompetitionRunning) {
+                alert('Сначала начните соревнование!');
+                return;
+            }
+            
+            const participant = participants.find(p => p.id === participantId);
+            if (!participant) return;
+            
+            participant.startTime = Date.now();
+            participant.isRunning = true;
+            
+            // Update UI
+            const card = document.querySelector(`.participant-card[data-id="${participantId}"]`);
+            const actionBtn = card.querySelector('button');
+            actionBtn.className = 'stop-btn';
+            actionBtn.textContent = 'Стоп';
+            actionBtn.disabled = false;
+            
+            // Add timer display
+            const timerDisplay = document.createElement('div');
+            timerDisplay.className = 'participant-timer';
+            
+            const startTimeDisplay = document.createElement('div');
+            startTimeDisplay.textContent = new Date(participant.startTime).toLocaleTimeString();
+            
+            const timerValue = document.createElement('div');
+            timerValue.className = 'timer-value';
+            timerValue.textContent = formatTime(0);
+            
+            const endTimeDisplay = document.createElement('div');
+            endTimeDisplay.textContent = '';
+            
+            timerDisplay.appendChild(startTimeDisplay);
+            timerDisplay.appendChild(timerValue);
+            timerDisplay.appendChild(endTimeDisplay);
+            
+            card.appendChild(timerDisplay);
+            
+            // Start timer
+            participant.timerInterval = setInterval(() => {
+                participant.elapsedTime = Date.now() - participant.startTime;
+                timerValue.textContent = formatTime(participant.elapsedTime);
+                saveData();
+            }, 10);
+            
+            saveData();
+        }
+
+        function stopParticipantTimer(participantId, forced = false) {
+            const participant = participants.find(p => p.id === participantId);
+            if (!participant) return;
+            
+            clearInterval(participant.timerInterval);
+            participant.endTime = forced ? (competitionStartTime + competitionElapsedTime) : Date.now();
+            participant.isRunning = false;
+            participant.elapsedTime = participant.endTime - participant.startTime;
+            
+            // Update UI
+            const card = document.querySelector(`.participant-card[data-id="${participantId}"]`);
+            const actionBtn = card.querySelector('button');
+            actionBtn.className = 'start-btn';
+            
+            // Disable button if competition is not running
+            if (!isCompetitionRunning) {
+                actionBtn.classList.add('disabled');
+                actionBtn.disabled = true;
+            }
+            
+            actionBtn.textContent = 'Пуск';
+            
+            // Update timer display
+            const timerDisplay = card.querySelector('.participant-timer');
+            if (timerDisplay) {
+                const endTimeDisplay = timerDisplay.querySelector('div:last-child');
+                endTimeDisplay.textContent = new Date(participant.endTime).toLocaleTimeString();
+            }
+            
+            saveData();
+        }
+
+        // CSV Export/Import functionality
+        const exportBtn = document.getElementById('exportBtn');
+        const importBtn = document.getElementById('importBtn');
+        const fileInput = document.getElementById('fileInput');
+        const successMessage = document.getElementById('successMessage');
+
+        exportBtn.addEventListener('click', () => {
+            exportToCSV();
+            dropdownMenu.classList.remove('show');
+        });
+
+        function exportToCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            
+            // Competition info
+            csvContent += "Время начала соревнования,Время завершения соревнования,Время проведения соревнования\n";
+            const startTime = competitionStartTime ? new Date(competitionStartTime).toLocaleString() : "";
+            const endTime = competitionStartTime ? new Date(competitionStartTime + competitionElapsedTime).toLocaleString() : "";
+            const duration = formatTime(competitionElapsedTime);
+            csvContent += `${startTime},${endTime},${duration}\n\n`;
+            
+            // Participants header
+            csvContent += "Номер участника,Время старта,Время завершения,Затраченное время,Комментарий\n";
+            
+            // Participants data
+            participants.forEach(participant => {
+                const start = participant.startTime ? new Date(participant.startTime).toLocaleString() : "";
+                const end = participant.endTime ? new Date(participant.endTime).toLocaleString() : "";
+                const elapsed = formatTime(participant.elapsedTime);
+                // Escape quotes in comment
+                const comment = participant.comment.replace(/"/g, '""');
+                csvContent += `${participant.number},"${start}","${end}",${elapsed},"${comment}"\n`;
+            });
+            
+            // Create download link
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `competition_results_${new Date().toISOString().slice(0, 10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showSuccessMessage('Таблица успешно экспортирована!');
+        }
+
+        importBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const csvData = event.target.result;
+                parseCSV(csvData);
+                dropdownMenu.classList.remove('show');
+            };
+            reader.readAsText(file);
+            
+            // Reset file input
+            fileInput.value = '';
+        });
+
+        function parseCSV(csvData) {
+            const lines = csvData.split('\n');
+            let participantsData = [];
+            let inParticipantsSection = false;
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                // Skip competition info lines
+                if (line.includes('Время начала соревнования')) {
+                    continue;
+                }
+                
+                // Check for participants header
+                if (line.includes('Номер участника')) {
+                    inParticipantsSection = true;
+                    continue;
+                }
+                
+                if (inParticipantsSection && line) {
+                    const values = parseCSVLine(line);
+                    if (values.length >= 5) {
+                        participantsData.push({
+                            number: parseInt(values[0]) || participants.length + 1,
+                            startTime: values[1] && values[1] !== '""' && values[1] !== '"' ? new Date(values[1]).getTime() : null,
+                            endTime: values[2] && values[2] !== '""' && values[2] !== '"' ? new Date(values[2]).getTime() : null,
+                            elapsedTime: parseTimeToMilliseconds(values[3]),
+                            comment: values[4].replace(/"/g, '')
+                        });
+                    }
+                }
+            }
+            
+            // Add imported participants
+            participantsData.forEach(data => {
+                const participant = {
+                    id: nextParticipantId++,
+                    number: data.number,
+                    comment: data.comment,
+                    startTime: data.startTime,
+                    endTime: data.endTime,
+                    elapsedTime: data.elapsedTime,
+                    isRunning: false,
+                    timerInterval: null
+                };
+                
+                if (data.startTime && !data.endTime) {
+                    participant.isRunning = true;
+                }
+                
+                participants.push(participant);
+            });
+            
+            renderParticipants();
+            saveData();
+            showSuccessMessage('Данные успешно импортированы!');
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                const nextChar = line[i + 1];
+                
+                if (char === '"' && !inQuotes) {
+                    inQuotes = true;
+                } else if (char === '"' && inQuotes && nextChar === '"') {
+                    current += '"';
+                    i++; // Skip the next quote
+                } else if (char === '"' && inQuotes) {
+                    inQuotes = false;
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current);
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            
+            result.push(current);
+            return result;
+        }
+
+        function parseTimeToMilliseconds(timeStr) {
+            if (!timeStr) return 0;
+            
+            const parts = timeStr.split(':');
+            if (parts.length !== 3) return 0;
+            
+            const hours = parseInt(parts[0]) || 0;
+            const minutes = parseInt(parts[1]) || 0;
+            const secondsParts = parts[2].split('.');
+            const seconds = parseInt(secondsParts[0]) || 0;
+            const centiseconds = parseInt(secondsParts[1]) || 0;
+            
+            return (hours * 3600 + minutes * 60 + seconds) * 1000 + centiseconds * 10;
+        }
+
+        function showSuccessMessage(message) {
+            successMessage.textContent = message;
+            successMessage.style.display = 'block';
+            
+            setTimeout(() => {
+                successMessage.style.display = 'none';
+            }, 3000);
+        }
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+</html>
