@@ -15,6 +15,7 @@
             --accent-color: #10b981;
             --danger-color: #ef4444;
             --success-color: #10b981;
+            --warning-color: #f59e0b;
         }
 
         [data-theme="light"] {
@@ -27,6 +28,7 @@
             --accent-color: #10b981;
             --danger-color: #ef4444;
             --success-color: #10b981;
+            --warning-color: #f59e0b;
         }
 
         * {
@@ -157,7 +159,7 @@
             font-weight: bold;
         }
 
-        .confirmation-dialog {
+        .confirmation-dialog, .delete-confirmation-dialog, .clear-history-dialog {
             background: var(--card-color);
             padding: 24px;
             border-radius: 16px;
@@ -165,10 +167,16 @@
             text-align: center;
             max-width: 320px;
             margin: 24px auto;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
             display: none;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .confirmation-dialog.show {
+        .confirmation-dialog.show, .delete-confirmation-dialog.show, .clear-history-dialog.show {
             display: block;
         }
 
@@ -184,7 +192,7 @@
             justify-content: center;
         }
 
-        .confirm-btn, .cancel-btn {
+        .confirm-btn, .cancel-btn, .delete-btn, .clear-btn {
             padding: 8px 16px;
             border: none;
             border-radius: 8px;
@@ -193,7 +201,7 @@
             transition: all 0.2s;
         }
 
-        .confirm-btn {
+        .confirm-btn, .delete-btn, .clear-btn {
             background: var(--danger-color);
             color: white;
         }
@@ -203,7 +211,7 @@
             color: var(--text-color);
         }
 
-        .confirm-btn:hover, .cancel-btn:hover {
+        .confirm-btn:hover, .cancel-btn:hover, .delete-btn:hover, .clear-btn:hover {
             opacity: 0.9;
             transform: scale(1.05);
         }
@@ -244,6 +252,8 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             position: relative;
             border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
         }
 
         .participant-header {
@@ -282,6 +292,12 @@
             border-bottom: 2px solid var(--primary-color);
         }
 
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
         .start-btn, .stop-btn {
             background: var(--accent-color);
             color: white;
@@ -291,13 +307,25 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
+            flex: 1;
         }
 
         .stop-btn {
             background: var(--danger-color);
         }
 
-        .start-btn:hover, .stop-btn:hover {
+        .delete-participant-btn {
+            background: var(--warning-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .start-btn:hover, .stop-btn:hover, .delete-participant-btn:hover {
             opacity: 0.9;
             transform: scale(1.05);
         }
@@ -375,9 +403,7 @@
             display: none;
         }
 
-        .success-message {
-            background: var(--success-color);
-            color: white;
+        .success-message, .error-message {
             padding: 12px 24px;
             border-radius: 8px;
             position: fixed;
@@ -388,6 +414,16 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
             display: none;
             animation: slideIn 0.3s ease-out;
+        }
+
+        .success-message {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .error-message {
+            background: var(--danger-color);
+            color: white;
         }
 
         @keyframes slideIn {
@@ -419,6 +455,10 @@
                 padding: 14px 24px;
                 font-size: 16px;
             }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
@@ -441,6 +481,9 @@
                     📥 Импорт таблицы
                     <input type="file" id="fileInput" class="file-input" accept=".csv">
                 </div>
+                <div class="dropdown-item" id="clearHistoryBtn">
+                    🗑️ Очистить историю
+                </div>
             </div>
         </header>
 
@@ -449,14 +492,6 @@
                 <span class="btn-icon">▶</span>
                 <span>Начать соревнование</span>
             </button>
-
-            <div class="confirmation-dialog" id="confirmationDialog">
-                <div class="confirmation-title">Действительно завершить соревнование?</div>
-                <div class="confirmation-options">
-                    <button class="confirm-btn" id="confirmBtn">Да</button>
-                    <button class="cancel-btn" id="cancelBtn">Нет</button>
-                </div>
-            </div>
 
             <div class="competition-time hidden" id="competitionTime">00:00:00.00</div>
 
@@ -468,7 +503,36 @@
         </main>
     </div>
 
+    <!-- Confirmation dialog for ending competition -->
+    <div class="confirmation-dialog" id="confirmationDialog">
+        <div class="confirmation-title">Действительно завершить соревнование?</div>
+        <div class="confirmation-options">
+            <button class="confirm-btn" id="confirmBtn">Да</button>
+            <button class="cancel-btn" id="cancelBtn">Нет</button>
+        </div>
+    </div>
+
+    <!-- Confirmation dialog for deleting participant -->
+    <div class="delete-confirmation-dialog" id="deleteConfirmationDialog">
+        <div class="confirmation-title">Удалить участника?</div>
+        <div class="confirmation-options">
+            <button class="delete-btn" id="deleteConfirmBtn">Да, удалить</button>
+            <button class="cancel-btn" id="deleteCancelBtn">Отмена</button>
+        </div>
+    </div>
+
+    <!-- Confirmation dialog for clearing history -->
+    <div class="clear-history-dialog" id="clearHistoryDialog">
+        <div class="confirmation-title">Очистить всю историю соревнования?</div>
+        <p style="margin-bottom: 16px; font-size: 14px;">Это действие нельзя отменить. Все данные будут удалены.</p>
+        <div class="confirmation-options">
+            <button class="clear-btn" id="clearConfirmBtn">Да, очистить</button>
+            <button class="cancel-btn" id="clearCancelBtn">Отмена</button>
+        </div>
+    </div>
+
     <div class="success-message" id="successMessage"></div>
+    <div class="error-message" id="errorMessage"></div>
 
     <script>
         // Load data from localStorage on page load
@@ -693,6 +757,7 @@
         // Participant functionality
         let participants = [];
         let nextParticipantId = 1;
+        let participantToDelete = null;
 
         const addParticipantBtn = document.getElementById('addParticipantBtn');
         const participantsContainer = document.getElementById('participantsContainer');
@@ -853,6 +918,14 @@
                 saveData();
             });
             
+            header.appendChild(numberInput);
+            header.appendChild(commentInput);
+            card.appendChild(header);
+            
+            // Action buttons
+            const actionButtons = document.createElement('div');
+            actionButtons.className = 'action-buttons';
+            
             const actionBtn = document.createElement('button');
             actionBtn.className = participant.isRunning ? 'stop-btn' : 'start-btn';
             
@@ -871,11 +944,16 @@
                 }
             });
             
-            header.appendChild(numberInput);
-            header.appendChild(commentInput);
-            header.appendChild(actionBtn);
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-participant-btn';
+            deleteBtn.textContent = 'Удалить';
+            deleteBtn.addEventListener('click', () => {
+                showDeleteConfirmationDialog(participant.id);
+            });
             
-            card.appendChild(header);
+            actionButtons.appendChild(actionBtn);
+            actionButtons.appendChild(deleteBtn);
+            card.appendChild(actionButtons);
             
             // Timer display (hidden initially)
             if (participant.startTime || participant.endTime) {
@@ -928,35 +1006,41 @@
             
             // Update UI
             const card = document.querySelector(`.participant-card[data-id="${participantId}"]`);
-            const actionBtn = card.querySelector('button');
+            const actionBtn = card.querySelector('.start-btn, .stop-btn');
             actionBtn.className = 'stop-btn';
             actionBtn.textContent = 'Стоп';
             actionBtn.disabled = false;
             
-            // Add timer display
-            const timerDisplay = document.createElement('div');
-            timerDisplay.className = 'participant-timer';
-            
-            const startTimeDisplay = document.createElement('div');
-            startTimeDisplay.textContent = new Date(participant.startTime).toLocaleTimeString();
-            
-            const timerValue = document.createElement('div');
-            timerValue.className = 'timer-value';
-            timerValue.textContent = formatTime(0);
-            
-            const endTimeDisplay = document.createElement('div');
-            endTimeDisplay.textContent = '';
-            
-            timerDisplay.appendChild(startTimeDisplay);
-            timerDisplay.appendChild(timerValue);
-            timerDisplay.appendChild(endTimeDisplay);
-            
-            card.appendChild(timerDisplay);
+            // Add timer display if not exists
+            let timerDisplay = card.querySelector('.participant-timer');
+            if (!timerDisplay) {
+                timerDisplay = document.createElement('div');
+                timerDisplay.className = 'participant-timer';
+                
+                const startTimeDisplay = document.createElement('div');
+                startTimeDisplay.textContent = new Date(participant.startTime).toLocaleTimeString();
+                
+                const timerValue = document.createElement('div');
+                timerValue.className = 'timer-value';
+                timerValue.textContent = formatTime(0);
+                
+                const endTimeDisplay = document.createElement('div');
+                endTimeDisplay.textContent = '';
+                
+                timerDisplay.appendChild(startTimeDisplay);
+                timerDisplay.appendChild(timerValue);
+                timerDisplay.appendChild(endTimeDisplay);
+                
+                card.appendChild(timerDisplay);
+            }
             
             // Start timer
             participant.timerInterval = setInterval(() => {
                 participant.elapsedTime = Date.now() - participant.startTime;
-                timerValue.textContent = formatTime(participant.elapsedTime);
+                const timerValue = card.querySelector('.timer-value');
+                if (timerValue) {
+                    timerValue.textContent = formatTime(participant.elapsedTime);
+                }
                 saveData();
             }, 10);
             
@@ -974,7 +1058,7 @@
             
             // Update UI
             const card = document.querySelector(`.participant-card[data-id="${participantId}"]`);
-            const actionBtn = card.querySelector('button');
+            const actionBtn = card.querySelector('.start-btn, .stop-btn');
             actionBtn.className = 'start-btn';
             
             // Disable button if competition is not running
@@ -995,11 +1079,97 @@
             saveData();
         }
 
+        // Delete participant functionality
+        const deleteConfirmationDialog = document.getElementById('deleteConfirmationDialog');
+        const deleteConfirmBtn = document.getElementById('deleteConfirmBtn');
+        const deleteCancelBtn = document.getElementById('deleteCancelBtn');
+
+        function showDeleteConfirmationDialog(participantId) {
+            participantToDelete = participantId;
+            deleteConfirmationDialog.classList.add('show');
+        }
+
+        deleteConfirmBtn.addEventListener('click', () => {
+            if (participantToDelete !== null) {
+                deleteParticipant(participantToDelete);
+                participantToDelete = null;
+            }
+            deleteConfirmationDialog.classList.remove('show');
+        });
+
+        deleteCancelBtn.addEventListener('click', () => {
+            participantToDelete = null;
+            deleteConfirmationDialog.classList.remove('show');
+        });
+
+        function deleteParticipant(participantId) {
+            // Stop timer if running
+            const participant = participants.find(p => p.id === participantId);
+            if (participant && participant.isRunning) {
+                clearInterval(participant.timerInterval);
+            }
+            
+            // Remove participant
+            participants = participants.filter(p => p.id !== participantId);
+            
+            // Renumber participants
+            participants.forEach((p, index) => {
+                p.number = index + 1;
+            });
+            
+            renderParticipants();
+            saveData();
+            showSuccessMessage('Участник удален');
+        }
+
+        // Clear history functionality
+        const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+        const clearHistoryDialog = document.getElementById('clearHistoryDialog');
+        const clearConfirmBtn = document.getElementById('clearConfirmBtn');
+        const clearCancelBtn = document.getElementById('clearCancelBtn');
+
+        clearHistoryBtn.addEventListener('click', () => {
+            clearHistoryDialog.classList.add('show');
+            dropdownMenu.classList.remove('show');
+        });
+
+        clearConfirmBtn.addEventListener('click', () => {
+            clearAllData();
+            clearHistoryDialog.classList.remove('show');
+        });
+
+        clearCancelBtn.addEventListener('click', () => {
+            clearHistoryDialog.classList.remove('show');
+        });
+
+        function clearAllData() {
+            // Stop competition timer if running
+            if (isCompetitionRunning) {
+                clearInterval(competitionTimerInterval);
+                isCompetitionRunning = false;
+                competitionBtn.innerHTML = '<span class="btn-icon">▶</span><span>Начать соревнование</span>';
+                competitionTimeDisplay.classList.add('hidden');
+            }
+            
+            // Clear all participants
+            participants = [];
+            nextParticipantId = 1;
+            
+            // Clear localStorage
+            localStorage.removeItem('stopwatchData');
+            
+            // Re-render
+            renderParticipants();
+            
+            showSuccessMessage('Вся история очищена');
+        }
+
         // CSV Export/Import functionality
         const exportBtn = document.getElementById('exportBtn');
         const importBtn = document.getElementById('importBtn');
         const fileInput = document.getElementById('fileInput');
         const successMessage = document.getElementById('successMessage');
+        const errorMessage = document.getElementById('errorMessage');
 
         exportBtn.addEventListener('click', () => {
             exportToCSV();
@@ -1169,6 +1339,15 @@
             
             setTimeout(() => {
                 successMessage.style.display = 'none';
+            }, 3000);
+        }
+
+        function showErrorMessage(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
             }, 3000);
         }
 
