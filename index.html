@@ -494,7 +494,7 @@
                     
                     renderParticipants();
                 } catch (e) {
-                    console.error('Error loading data:', e);
+                    console.error('Error loading ', e);
                     // Initialize with default data if there's an error
                     participants = [];
                     nextParticipantId = 1;
@@ -1007,10 +1007,8 @@
         });
 
         function exportToCSV() {
-            let csvContent = "data:text/csv;charset=utf-8,";
-            
-            // Competition info
-            csvContent += "Время начала соревнования,Время завершения соревнования,Время проведения соревнования\n";
+            // Create CSV content
+            let csvContent = "Время начала соревнования,Время завершения соревнования,Время проведения соревнования\n";
             const startTime = competitionStartTime ? new Date(competitionStartTime).toLocaleString() : "";
             const endTime = competitionStartTime ? new Date(competitionStartTime + competitionElapsedTime).toLocaleString() : "";
             const duration = formatTime(competitionElapsedTime);
@@ -1029,14 +1027,16 @@
                 csvContent += `${participant.number},"${start}","${end}",${elapsed},"${comment}"\n`;
             });
             
-            // Create download link
-            const encodedUri = encodeURI(csvContent);
+            // Create Blob and download
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
+            link.setAttribute("href", url);
             link.setAttribute("download", `competition_results_${new Date().toISOString().slice(0, 10)}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+            URL.revokeObjectURL(url);
             
             showSuccessMessage('Таблица успешно экспортирована!');
         }
