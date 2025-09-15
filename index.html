@@ -334,16 +334,17 @@
             color: var(--warning-color);
             font-weight: 600;
             cursor: pointer;
-            padding: 8px 16px;
+            padding: 10px 0;
             margin-top: 20px;
             text-align: center;
             transition: all 0.2s;
-            border-radius: 8px;
+            border-radius: 4px;
+            font-size: 14px;
         }
 
         .delete-text:hover {
             background: rgba(245, 158, 11, 0.1);
-            transform: scale(1.05);
+            transform: scale(1.03);
         }
 
         .participant-timer {
@@ -464,10 +465,6 @@
             .action-buttons {
                 flex-direction: column;
             }
-            
-            .delete-text {
-                margin-top: 20px;
-            }
         }
     </style>
 </head>
@@ -544,11 +541,48 @@
     <div class="error-message" id="errorMessage"></div>
 
     <script>
+        // Global variables
+        let participants = [];
+        let nextParticipantId = 1;
+        let isCompetitionRunning = false;
+        let competitionStartTime = null;
+        let competitionTimerInterval = null;
+        let competitionElapsedTime = 0;
+        let competitionPausedTime = 0;
+        let participantToDelete = null;
+
+        // DOM Elements
+        const competitionBtn = document.getElementById('competitionBtn');
+        const confirmationDialog = document.getElementById('confirmationDialog');
+        const confirmBtn = document.getElementById('confirmBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const competitionTimeDisplay = document.getElementById('competitionTime');
+        const addParticipantBtn = document.getElementById('addParticipantBtn');
+        const participantsContainer = document.getElementById('participantsContainer');
+        const groupsContainer = document.getElementById('groupsContainer');
+        const deleteConfirmationDialog = document.getElementById('deleteConfirmationDialog');
+        const deleteConfirmBtn = document.getElementById('deleteConfirmBtn');
+        const deleteCancelBtn = document.getElementById('deleteCancelBtn');
+        const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+        const clearHistoryDialog = document.getElementById('clearHistoryDialog');
+        const clearConfirmBtn = document.getElementById('clearConfirmBtn');
+        const clearCancelBtn = document.getElementById('clearCancelBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const importBtn = document.getElementById('importBtn');
+        const fileInput = document.getElementById('fileInput');
+        const successMessage = document.getElementById('successMessage');
+        const errorMessage = document.getElementById('errorMessage');
+        const menuBtn = document.getElementById('menuBtn');
+        const dropdownMenu = document.getElementById('dropdownMenu');
+        const themeToggle = document.getElementById('themeToggle');
+        const themeSwitch = document.getElementById('themeSwitch');
+        const themeSwitchHandle = document.getElementById('themeSwitchHandle');
+
         // Load data from localStorage on page load
         function loadData() {
-            const savedData = localStorage.getItem('stopwatchData');
-            if (savedData) {
-                try {
+            try {
+                const savedData = localStorage.getItem('stopwatchData');
+                if (savedData) {
                     const data = JSON.parse(savedData);
                     participants = data.participants || [];
                     nextParticipantId = data.nextParticipantId || 1;
@@ -557,80 +591,83 @@
                     competitionElapsedTime = data.competitionElapsedTime || 0;
                     
                     if (isCompetitionRunning && competitionStartTime) {
-                        competitionTimerInterval = setInterval(() => {
-                            competitionElapsedTime = Date.now() - competitionStartTime;
-                            updateCompetitionTimeDisplay();
-                        }, 10);
+                        startCompetitionTimer();
                         competitionTimeDisplay.classList.remove('hidden');
                         competitionBtn.innerHTML = '<span class="btn-icon">■</span><span>Завершить соревнование</span>';
                     }
-                    
-                    renderParticipants();
-                } catch (e) {
-                    console.error('Error loading ', e);
-                    // Initialize with default data if there's an error
+                } else {
+                    // Initialize with default data
                     participants = [];
                     nextParticipantId = 1;
                     isCompetitionRunning = false;
                     competitionStartTime = null;
                     competitionElapsedTime = 0;
-                    addParticipant();
                 }
-            } else {
-                // Initialize with default data
+                
+                renderParticipants();
+            } catch (e) {
+                console.error('Error loading data:', e);
+                // Initialize with default data if there's an error
                 participants = [];
                 nextParticipantId = 1;
                 isCompetitionRunning = false;
                 competitionStartTime = null;
                 competitionElapsedTime = 0;
-                addParticipant();
+                renderParticipants();
             }
             
             // Load theme
             const savedTheme = localStorage.getItem('theme') || 'dark';
             if (savedTheme === 'light') {
                 document.body.setAttribute('data-theme', 'light');
-                document.getElementById('themeSwitchHandle').style.right = '1px';
-                document.getElementById('themeSwitchHandle').style.left = 'auto';
+                themeSwitchHandle.style.right = '1px';
+                themeSwitchHandle.style.left = 'auto';
                 document.querySelector('.theme-toggle span').textContent = 'Светлая тема';
             } else {
-                document.getElementById('themeSwitchHandle').style.left = '1px';
-                document.getElementById('themeSwitchHandle').style.right = 'auto';
+                themeSwitchHandle.style.left = '1px';
+                themeSwitchHandle.style.right = 'auto';
                 document.querySelector('.theme-toggle span').textContent = 'Темная тема';
             }
         }
 
         // Save data to localStorage
         function saveData() {
-            const data = {
-                participants: participants.map(p => ({
-                    ...p,
-                    timerInterval: null // Don't save interval references
-                })),
-                nextParticipantId,
-                isCompetitionRunning,
-                competitionStartTime,
-                competitionElapsedTime
-            };
-            localStorage.setItem('stopwatchData', JSON.stringify(data));
+            try {
+                const data = {
+                    participants: participants.map(p => ({
+                        ...p,
+                        timerInterval: null // Don't save interval references
+                    })),
+                    nextParticipantId,
+                    isCompetitionRunning,
+                    competitionStartTime,
+                    competitionElapsedTime
+                };
+                localStorage.setItem('stopwatchData', JSON.stringify(data));
+            } catch (e) {
+                console.error('Error saving data:', e);
+            }
+        }
+
+        // Start competition timer
+        function startCompetitionTimer() {
+            competitionTimerInterval = setInterval(() => {
+                competitionElapsedTime = Date.now() - competitionStartTime;
+                updateCompetitionTimeDisplay();
+            }, 10);
         }
 
         // Theme toggle functionality
-        const themeToggle = document.getElementById('themeToggle');
-        const themeSwitch = document.getElementById('themeSwitch');
-        const themeSwitchHandle = document.getElementById('themeSwitchHandle');
-        const body = document.body;
-
         themeToggle.addEventListener('click', () => {
-            const currentTheme = body.getAttribute('data-theme') || 'dark';
+            const currentTheme = document.body.getAttribute('data-theme') || 'dark';
             if (currentTheme === 'dark') {
-                body.setAttribute('data-theme', 'light');
+                document.body.setAttribute('data-theme', 'light');
                 themeSwitchHandle.style.right = '1px';
                 themeSwitchHandle.style.left = 'auto';
                 document.querySelector('.theme-toggle span').textContent = 'Светлая тема';
                 localStorage.setItem('theme', 'light');
             } else {
-                body.removeAttribute('data-theme');
+                document.body.removeAttribute('data-theme');
                 themeSwitchHandle.style.left = '1px';
                 themeSwitchHandle.style.right = 'auto';
                 document.querySelector('.theme-toggle span').textContent = 'Темная тема';
@@ -639,9 +676,6 @@
         });
 
         // Menu toggle functionality
-        const menuBtn = document.getElementById('menuBtn');
-        const dropdownMenu = document.getElementById('dropdownMenu');
-
         menuBtn.addEventListener('click', () => {
             dropdownMenu.classList.toggle('show');
         });
@@ -654,18 +688,6 @@
         });
 
         // Competition timer functionality
-        let competitionStartTime = null;
-        let competitionTimerInterval = null;
-        let isCompetitionRunning = false;
-        let competitionElapsedTime = 0;
-        let competitionPausedTime = 0;
-
-        const competitionBtn = document.getElementById('competitionBtn');
-        const confirmationDialog = document.getElementById('confirmationDialog');
-        const confirmBtn = document.getElementById('confirmBtn');
-        const cancelBtn = document.getElementById('cancelBtn');
-        const competitionTimeDisplay = document.getElementById('competitionTime');
-
         competitionBtn.addEventListener('click', () => {
             if (!isCompetitionRunning) {
                 startCompetition();
@@ -679,11 +701,7 @@
             competitionStartTime = Date.now() - competitionElapsedTime;
             competitionBtn.innerHTML = '<span class="btn-icon">■</span><span>Завершить соревнование</span>';
             
-            competitionTimerInterval = setInterval(() => {
-                competitionElapsedTime = Date.now() - competitionStartTime;
-                updateCompetitionTimeDisplay();
-            }, 10);
-            
+            startCompetitionTimer();
             competitionTimeDisplay.classList.remove('hidden');
             
             // Enable all start buttons
@@ -697,7 +715,10 @@
 
         function showConfirmationDialog() {
             // Pause the timer while dialog is shown
-            clearInterval(competitionTimerInterval);
+            if (competitionTimerInterval) {
+                clearInterval(competitionTimerInterval);
+                competitionTimerInterval = null;
+            }
             competitionPausedTime = Date.now();
             confirmationDialog.classList.add('show');
         }
@@ -709,10 +730,7 @@
             if (isCompetitionRunning) {
                 const pauseDuration = Date.now() - competitionPausedTime;
                 competitionStartTime += pauseDuration;
-                competitionTimerInterval = setInterval(() => {
-                    competitionElapsedTime = Date.now() - competitionStartTime;
-                    updateCompetitionTimeDisplay();
-                }, 10);
+                startCompetitionTimer();
             }
         }
 
@@ -727,7 +745,10 @@
 
         function endCompetition() {
             isCompetitionRunning = false;
-            clearInterval(competitionTimerInterval);
+            if (competitionTimerInterval) {
+                clearInterval(competitionTimerInterval);
+                competitionTimerInterval = null;
+            }
             competitionBtn.innerHTML = '<span class="btn-icon">▶</span><span>Начать соревнование</span>';
             
             // Mark all running participants as finished
@@ -744,8 +765,6 @@
             });
             
             saveData();
-            
-            // Show success message
             showSuccessMessage('Соревнование завершено. Результаты сохранены.');
         }
 
@@ -754,6 +773,8 @@
         }
 
         function formatTime(milliseconds) {
+            if (isNaN(milliseconds)) return "00:00:00.00";
+            
             const totalSeconds = Math.floor(milliseconds / 1000);
             const hours = Math.floor(totalSeconds / 3600);
             const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -764,14 +785,6 @@
         }
 
         // Participant functionality
-        let participants = [];
-        let nextParticipantId = 1;
-        let participantToDelete = null;
-
-        const addParticipantBtn = document.getElementById('addParticipantBtn');
-        const participantsContainer = document.getElementById('participantsContainer');
-        const groupsContainer = document.getElementById('groupsContainer');
-
         addParticipantBtn.addEventListener('click', () => {
             addParticipant();
             saveData();
@@ -912,9 +925,11 @@
             numberInput.contentEditable = true;
             numberInput.addEventListener('blur', (e) => {
                 const newValue = parseInt(e.target.textContent) || 1;
-                participant.number = newValue;
-                e.target.textContent = newValue;
-                saveData();
+                if (!isNaN(newValue)) {
+                    participant.number = newValue;
+                    e.target.textContent = newValue;
+                    saveData();
+                }
             });
             
             const commentInput = document.createElement('input');
@@ -945,7 +960,8 @@
             }
             
             actionBtn.textContent = participant.isRunning ? 'Стоп' : 'Пуск';
-            actionBtn.addEventListener('click', () => {
+            actionBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 if (!participant.isRunning) {
                     startParticipantTimer(participant.id);
                 } else {
@@ -960,7 +976,8 @@
             const deleteText = document.createElement('div');
             deleteText.className = 'delete-text';
             deleteText.textContent = 'Удалить';
-            deleteText.addEventListener('click', () => {
+            deleteText.addEventListener('click', (e) => {
+                e.stopPropagation();
                 showDeleteConfirmationDialog(participant.id);
             });
             
@@ -991,21 +1008,38 @@
                 
                 // Update timer if still running
                 if (participant.isRunning) {
-                    participant.timerInterval = setInterval(() => {
-                        participant.elapsedTime = Date.now() - participant.startTime;
-                        timerValue.textContent = formatTime(participant.elapsedTime);
-                        saveData();
-                    }, 10);
+                    startParticipantTimerInterval(participant);
                 }
             }
             
             return card;
         }
 
+        function startParticipantTimerInterval(participant) {
+            // Clear any existing interval
+            if (participant.timerInterval) {
+                clearInterval(participant.timerInterval);
+            }
+            
+            participant.timerInterval = setInterval(() => {
+                participant.elapsedTime = Date.now() - participant.startTime;
+                saveData();
+                
+                // Update UI
+                const card = document.querySelector(`.participant-card[data-id="${participant.id}"]`);
+                if (card) {
+                    const timerValue = card.querySelector('.timer-value');
+                    if (timerValue) {
+                        timerValue.textContent = formatTime(participant.elapsedTime);
+                    }
+                }
+            }, 10);
+        }
+
         function startParticipantTimer(participantId) {
             // Check if competition is running
             if (!isCompetitionRunning) {
-                alert('Сначала начните соревнование!');
+                showErrorMessage('Сначала начните соревнование!');
                 return;
             }
             
@@ -1017,10 +1051,14 @@
             
             // Update UI
             const card = document.querySelector(`.participant-card[data-id="${participantId}"]`);
+            if (!card) return;
+            
             const actionBtn = card.querySelector('.start-btn, .stop-btn');
-            actionBtn.className = 'stop-btn';
-            actionBtn.textContent = 'Стоп';
-            actionBtn.disabled = false;
+            if (actionBtn) {
+                actionBtn.className = 'stop-btn';
+                actionBtn.textContent = 'Стоп';
+                actionBtn.disabled = false;
+            }
             
             // Add timer display if not exists
             let timerDisplay = card.querySelector('.participant-timer');
@@ -1046,14 +1084,7 @@
             }
             
             // Start timer
-            participant.timerInterval = setInterval(() => {
-                participant.elapsedTime = Date.now() - participant.startTime;
-                const timerValue = card.querySelector('.timer-value');
-                if (timerValue) {
-                    timerValue.textContent = formatTime(participant.elapsedTime);
-                }
-                saveData();
-            }, 10);
+            startParticipantTimerInterval(participant);
             
             saveData();
         }
@@ -1062,27 +1093,353 @@
             const participant = participants.find(p => p.id === participantId);
             if (!participant) return;
             
-            clearInterval(participant.timerInterval);
+            // Stop timer interval
+            if (participant.timerInterval) {
+                clearInterval(participant.timerInterval);
+                participant.timerInterval = null;
+            }
+            
             participant.endTime = forced ? (competitionStartTime + competitionElapsedTime) : Date.now();
             participant.isRunning = false;
             participant.elapsedTime = participant.endTime - participant.startTime;
             
             // Update UI
             const card = document.querySelector(`.participant-card[data-id="${participantId}"]`);
+            if (!card) return;
+            
             const actionBtn = card.querySelector('.start-btn, .stop-btn');
-            actionBtn.className = 'start-btn';
-            
-            // Disable button if competition is not running
-            if (!isCompetitionRunning) {
-                actionBtn.classList.add('disabled');
-                actionBtn.disabled = true;
+            if (actionBtn) {
+                actionBtn.className = 'start-btn';
+                
+                // Disable button if competition is not running
+                if (!isCompetitionRunning) {
+                    actionBtn.classList.add('disabled');
+                    actionBtn.disabled = true;
+                }
+                
+                actionBtn.textContent = 'Пуск';
             }
-            
-            actionBtn.textContent = 'Пуск';
             
             // Update timer display
             const timerDisplay = card.querySelector('.participant-timer');
             if (timerDisplay) {
                 const endTimeDisplay = timerDisplay.querySelector('div:last-child');
-                endTimeDisplay.textContent = new Date(participant.endTime).toLocaleTimeString();
-          
+                if (endTimeDisplay) {
+                    endTimeDisplay.textContent = new Date(participant.endTime).toLocaleTimeString();
+                }
+                
+                const timerValue = timerDisplay.querySelector('.timer-value');
+                if (timerValue) {
+                    timerValue.textContent = formatTime(participant.elapsedTime);
+                }
+            }
+            
+            saveData();
+        }
+
+        // Delete participant functionality
+        function showDeleteConfirmationDialog(participantId) {
+            participantToDelete = participantId;
+            deleteConfirmationDialog.classList.add('show');
+        }
+
+        deleteConfirmBtn.addEventListener('click', () => {
+            if (participantToDelete !== null) {
+                deleteParticipant(participantToDelete);
+                participantToDelete = null;
+            }
+            deleteConfirmationDialog.classList.remove('show');
+        });
+
+        deleteCancelBtn.addEventListener('click', () => {
+            participantToDelete = null;
+            deleteConfirmationDialog.classList.remove('show');
+        });
+
+        function deleteParticipant(participantId) {
+            // Find participant
+            const participantIndex = participants.findIndex(p => p.id === participantId);
+            if (participantIndex === -1) return;
+            
+            // Stop timer if running
+            const participant = participants[participantIndex];
+            if (participant && participant.isRunning && participant.timerInterval) {
+                clearInterval(participant.timerInterval);
+            }
+            
+            // Remove participant
+            participants.splice(participantIndex, 1);
+            
+            // Renumber participants
+            participants.forEach((p, index) => {
+                p.number = index + 1;
+            });
+            
+            renderParticipants();
+            saveData();
+            showSuccessMessage('Участник удален');
+        }
+
+        // Clear history functionality
+        clearHistoryBtn.addEventListener('click', () => {
+            clearHistoryDialog.classList.add('show');
+            dropdownMenu.classList.remove('show');
+        });
+
+        clearConfirmBtn.addEventListener('click', () => {
+            clearAllData();
+            clearHistoryDialog.classList.remove('show');
+        });
+
+        clearCancelBtn.addEventListener('click', () => {
+            clearHistoryDialog.classList.remove('show');
+        });
+
+        function clearAllData() {
+            // Stop competition timer if running
+            if (isCompetitionRunning && competitionTimerInterval) {
+                clearInterval(competitionTimerInterval);
+                competitionTimerInterval = null;
+            }
+            
+            isCompetitionRunning = false;
+            competitionStartTime = null;
+            competitionElapsedTime = 0;
+            participants = [];
+            nextParticipantId = 1;
+            
+            // Update UI
+            competitionBtn.innerHTML = '<span class="btn-icon">▶</span><span>Начать соревнование</span>';
+            competitionTimeDisplay.classList.add('hidden');
+            
+            // Clear localStorage
+            localStorage.removeItem('stopwatchData');
+            
+            // Re-render
+            renderParticipants();
+            
+            showSuccessMessage('Вся история очищена');
+        }
+
+        // CSV Export/Import functionality
+        exportBtn.addEventListener('click', () => {
+            exportToCSV();
+            dropdownMenu.classList.remove('show');
+        });
+
+        function exportToCSV() {
+            try {
+                // Create CSV content
+                let csvContent = "Время начала соревнования,Время завершения соревнования,Время проведения соревнования\n";
+                const startTime = competitionStartTime ? new Date(competitionStartTime).toLocaleString() : "";
+                const endTime = competitionStartTime ? new Date(competitionStartTime + competitionElapsedTime).toLocaleString() : "";
+                const duration = formatTime(competitionElapsedTime);
+                csvContent += `${startTime},${endTime},${duration}\n\n`;
+                
+                // Participants header
+                csvContent += "Номер участника,Время старта,Время завершения,Затраченное время,Комментарий\n";
+                
+                // Participants data
+                participants.forEach(participant => {
+                    const start = participant.startTime ? new Date(participant.startTime).toLocaleString() : "";
+                    const end = participant.endTime ? new Date(participant.endTime).toLocaleString() : "";
+                    const elapsed = formatTime(participant.elapsedTime);
+                    // Escape quotes in comment
+                    const comment = participant.comment.replace(/"/g, '""');
+                    csvContent += `${participant.number},"${start}","${end}",${elapsed},"${comment}"\n`;
+                });
+                
+                // Create Blob and download
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", `competition_results_${new Date().toISOString().slice(0, 10)}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+                showSuccessMessage('Таблица успешно экспортирована!');
+            } catch (e) {
+                console.error('Error exporting CSV:', e);
+                showErrorMessage('Ошибка при экспорте таблицы');
+            }
+        }
+
+        importBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const csvData = event.target.result;
+                    parseCSV(csvData);
+                    dropdownMenu.classList.remove('show');
+                } catch (e) {
+                    console.error('Error importing CSV:', e);
+                    showErrorMessage('Ошибка при импорте таблицы');
+                }
+            };
+            reader.readAsText(file);
+            
+            // Reset file input
+            fileInput.value = '';
+        });
+
+        function parseCSV(csvData) {
+            const lines = csvData.split('\n');
+            let participantsData = [];
+            let inParticipantsSection = false;
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                // Skip competition info lines
+                if (line.includes('Время начала соревнования')) {
+                    continue;
+                }
+                
+                // Check for participants header
+                if (line.includes('Номер участника')) {
+                    inParticipantsSection = true;
+                    continue;
+                }
+                
+                if (inParticipantsSection && line) {
+                    const values = parseCSVLine(line);
+                    if (values.length >= 5) {
+                        let startTime = null;
+                        let endTime = null;
+                        
+                        try {
+                            if (values[1] && values[1] !== '""' && values[1] !== '"') {
+                                const date1 = new Date(values[1]);
+                                if (!isNaN(date1.getTime())) {
+                                    startTime = date1.getTime();
+                                }
+                            }
+                            
+                            if (values[2] && values[2] !== '""' && values[2] !== '"') {
+                                const date2 = new Date(values[2]);
+                                if (!isNaN(date2.getTime())) {
+                                    endTime = date2.getTime();
+                                }
+                            }
+                        } catch (e) {
+                            console.error('Error parsing dates:', e);
+                        }
+                        
+                        participantsData.push({
+                            number: parseInt(values[0]) || participants.length + 1,
+                            startTime: startTime,
+                            endTime: endTime,
+                            elapsedTime: parseTimeToMilliseconds(values[3]),
+                            comment: values[4].replace(/"/g, '')
+                        });
+                    }
+                }
+            }
+            
+            // Add imported participants
+            participantsData.forEach(data => {
+                const participant = {
+                    id: nextParticipantId++,
+                    number: data.number,
+                    comment: data.comment,
+                    startTime: data.startTime,
+                    endTime: data.endTime,
+                    elapsedTime: data.elapsedTime,
+                    isRunning: false,
+                    timerInterval: null
+                };
+                
+                if (data.startTime && !data.endTime) {
+                    participant.isRunning = true;
+                }
+                
+                participants.push(participant);
+            });
+            
+            renderParticipants();
+            saveData();
+            showSuccessMessage('Данные успешно импортированы!');
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                const nextChar = line[i + 1];
+                
+                if (char === '"' && !inQuotes) {
+                    inQuotes = true;
+                } else if (char === '"' && inQuotes && nextChar === '"') {
+                    current += '"';
+                    i++; // Skip the next quote
+                } else if (char === '"' && inQuotes) {
+                    inQuotes = false;
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current);
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            
+            result.push(current);
+            return result;
+        }
+
+        function parseTimeToMilliseconds(timeStr) {
+            if (!timeStr) return 0;
+            
+            try {
+                const parts = timeStr.split(':');
+                if (parts.length !== 3) return 0;
+                
+                const hours = parseInt(parts[0]) || 0;
+                const minutes = parseInt(parts[1]) || 0;
+                const secondsParts = parts[2].split('.');
+                const seconds = parseInt(secondsParts[0]) || 0;
+                const centiseconds = parseInt(secondsParts[1]) || 0;
+                
+                return (hours * 3600 + minutes * 60 + seconds) * 1000 + centiseconds * 10;
+            } catch (e) {
+                console.error('Error parsing time:', e);
+                return 0;
+            }
+        }
+
+        function showSuccessMessage(message) {
+            successMessage.textContent = message;
+            successMessage.style.display = 'block';
+            
+            setTimeout(() => {
+                successMessage.style.display = 'none';
+            }, 3000);
+        }
+
+        function showErrorMessage(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
+            }, 3000);
+        }
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+</html>
